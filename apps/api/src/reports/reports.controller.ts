@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Post, Put } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AuthenticatedUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { UpdateReportSubscriptionDto } from './dto/update-report-subscription.dto';
@@ -7,7 +7,7 @@ import { ReportSchedulerService } from './report-scheduler.service';
 import { ReportsService } from './reports.service';
 
 @ApiTags('reports')
-@ApiCookieAuth()
+@ApiBearerAuth()
 @Controller('reports')
 export class ReportsController {
   constructor(

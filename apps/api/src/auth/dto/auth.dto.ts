@@ -77,3 +77,18 @@ export class AcceptInviteDto {
   @Length(2, 120)
   fullName!: string;
 }
+
+export class RefreshTokenDto {
+  @ApiProperty({ description: 'The refresh token issued at login' })
+  @IsString()
+  @Length(1, 2048)
+  refreshToken!: string;
+}
+
+export class LogoutDto {
+  @ApiPropertyOptional({ description: 'The refresh token to revoke' })
+  @IsOptional()
+  @IsString()
+  @Length(1, 2048)
+  refreshToken?: string;
+}

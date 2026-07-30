@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, NotFoundException, Post, Put } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AuthenticatedUser, CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { Roles } from '../../../common/decorators/roles.decorator';
@@ -9,7 +9,7 @@ import { AutoPayoutSchedulerService } from './auto-payout-scheduler.service';
 import { AutoPayoutService } from './auto-payout.service';
 
 @ApiTags('payout-schedule')
-@ApiCookieAuth()
+@ApiBearerAuth()
 @Controller('payout-schedule')
 export class AutoPayoutController {
   constructor(

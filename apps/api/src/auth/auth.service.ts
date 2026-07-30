@@ -39,6 +39,8 @@ export interface AuthenticatedProfile {
   };
 }
 
+export type AuthResult = TokenPair & { profile: AuthenticatedProfile };
+
 interface RequestContext {
   userAgent?: string;
   ipAddress?: string;

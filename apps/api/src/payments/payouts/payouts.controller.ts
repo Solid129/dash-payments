@@ -13,7 +13,7 @@ import {
   Res,
   StreamableFile,
 } from '@nestjs/common';
-import { ApiCookieAuth, ApiHeader, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { IsEnum, IsOptional } from 'class-validator';
 import { Response } from 'express';
 
@@ -36,7 +36,7 @@ class QueryPayoutsDto {
 }
 
 @ApiTags('payouts')
-@ApiCookieAuth()
+@ApiBearerAuth()
 @Controller('payouts')
 export class PayoutsController {
   constructor(private readonly payouts: PayoutsService) {}

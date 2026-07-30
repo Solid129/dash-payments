@@ -1,5 +1,5 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 
@@ -44,7 +44,7 @@ class MonthsQueryDto {
 }
 
 @ApiTags('dashboard')
-@ApiCookieAuth()
+@ApiBearerAuth()
 @Controller('dashboard')
 export class DashboardController {
   constructor(

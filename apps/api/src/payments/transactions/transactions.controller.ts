@@ -1,5 +1,5 @@
 import { Controller, Get, Param, ParseUUIDPipe, Query, Res, StreamableFile } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiProduces, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 
 import { toCsv } from '../../common/csv';
@@ -10,7 +10,7 @@ import { QueryTransactionsDto } from './dto/query-transactions.dto';
 import { TransactionListItem, TransactionsService } from './transactions.service';
 
 @ApiTags('transactions')
-@ApiCookieAuth()
+@ApiBearerAuth()
 @Controller('transactions')
 export class TransactionsController {
   constructor(private readonly transactions: TransactionsService) {}

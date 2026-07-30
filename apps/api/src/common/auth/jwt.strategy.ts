@@ -1,10 +1,8 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import { Request } from 'express';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 
-import { ACCESS_TOKEN_COOKIE } from '../../auth/cookies';
 import { AccessTokenPayload } from '../../auth/token.service';
 import { AuthenticatedUser } from '../decorators/current-user.decorator';
 import { UserService } from '../../user/user.service';
@@ -16,12 +14,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     private readonly users: UserService,
   ) {
     super({
-      // Cookie first (how the browser authenticates); Bearer as a fallback so the
-      // API stays usable from curl and Swagger without a cookie jar.
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        (request: Request) => request?.cookies?.[ACCESS_TOKEN_COOKIE] ?? null,
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-      ]),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: config.getOrThrow<string>('JWT_ACCESS_SECRET'),
     });

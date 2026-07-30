@@ -1,12 +1,10 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { getAccessToken, getRefreshToken, setTokens, clearTokens } from './token-storage';
 
 export const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  // Tokens live in httpOnly cookies, not in JS-readable storage — this is what
-  // makes the browser attach them at all.
-  withCredentials: true,
 });
 
 /** The error envelope every failing API response shares; see the backend's AllExceptionsFilter. */
@@ -42,13 +40,34 @@ const NO_REFRESH_PATHS = ['/auth/refresh', '/auth/login', '/auth/signup'];
  * the backend correctly treats as reuse and revokes the whole session. Coalescing
  * to one promise is what makes concurrent 401s safe instead of self-inflicted.
  */
+api.interceptors.request.use((config) => {
+  const token = getAccessToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 let refreshPromise: Promise<void> | null = null;
 
 function refreshSession(): Promise<void> {
   if (!refreshPromise) {
-    refreshPromise = api
-      .post('/auth/refresh')
-      .then(() => undefined)
+    refreshPromise = (async () => {
+      const refreshToken = getRefreshToken();
+      if (!refreshToken) {
+        clearTokens();
+        throw new Error('No refresh token available');
+      }
+      try {
+        const { data } = await api.post<{ accessToken: string; refreshToken: string }>('/auth/refresh', {
+          refreshToken,
+        });
+        setTokens(data);
+      } catch (error) {
+        clearTokens();
+        throw error;
+      }
+    })()
       .finally(() => {
         refreshPromise = null;
       });
@@ -74,11 +93,9 @@ api.interceptors.response.use(
 
     try {
       await refreshSession();
+      delete config.headers.Authorization;
       return api(config);
     } catch {
-      // The refresh itself failed — the session is genuinely over. Let the
-      // original 401 propagate so callers (e.g. the auth context) can react by
-      // sending the user to /login.
       throw error;
     }
   },

@@ -1,5 +1,5 @@
 import { Controller, Get, Module } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { AuthenticatedUser, CurrentUser } from '../../../common/decorators/current-user.decorator';
 import { BankAccountsRepository } from './bank-accounts.repository';
@@ -12,7 +12,7 @@ import { BankAccountsService } from './bank-accounts.service';
  * rather than pretending a POST here would be meaningful.
  */
 @ApiTags('bank-accounts')
-@ApiCookieAuth()
+@ApiBearerAuth()
 @Controller('bank-accounts')
 export class BankAccountsController {
   constructor(private readonly bankAccounts: BankAccountsService) {}

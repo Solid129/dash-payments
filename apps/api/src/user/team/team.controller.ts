@@ -10,7 +10,7 @@ import {
   Patch,
   Post,
 } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { UserRole } from '../user.schema';
 import { AuthenticatedUser, CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -19,7 +19,7 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 import { TeamService } from './team.service';
 
 @ApiTags('team')
-@ApiCookieAuth()
+@ApiBearerAuth()
 @Controller('team')
 export class TeamController {
   constructor(private readonly team: TeamService) {}

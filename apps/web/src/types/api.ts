@@ -9,6 +9,11 @@
 
 export type UserRole = 'OWNER' | 'ACCOUNTANT' | 'SUPPORT';
 
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+}
+
 export interface AuthenticatedProfile {
   user: {
     id: string;
@@ -24,6 +29,10 @@ export interface AuthenticatedProfile {
     defaultCurrency: string;
     supportEmail: string | null;
   };
+}
+
+export interface AuthResponse extends TokenPair {
+  profile: AuthenticatedProfile;
 }
 
 export type TransactionType = 'PAYMENT' | 'REFUND';

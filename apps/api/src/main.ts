@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 
 import { AppModule } from './app.module';
@@ -21,25 +20,18 @@ async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
 
   app.setGlobalPrefix('api');
-  app.use(cookieParser());
   app.use(
     helmet({
-      // The API serves JSON, not HTML; CSP here would only restrict a page we
-      // never render. The frontend is served separately by Vite/a CDN.
       contentSecurityPolicy: false,
       crossOriginResourcePolicy: { policy: 'cross-origin' },
     }),
   );
 
-  // Credentialed CORS requires an explicit origin — `*` is rejected by browsers
-  // when `credentials: true`, and allowing any origin to send cookies would
-  // defeat the point of SameSite.
   app.enableCors({
     origin: config
       .getOrThrow<string>('WEB_ORIGIN')
       .split(',')
       .map((o) => o.trim()),
-    credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Idempotency-Key'],
   });
@@ -67,17 +59,13 @@ async function bootstrap(): Promise<void> {
   if (!isProduction) {
     const swagger = new DocumentBuilder()
       .setTitle('Merchant Payments API')
-      .setDescription(
-        'Dashboard, transactions, and asynchronous payouts. ' +
-          'Browser clients authenticate with httpOnly cookies; a Bearer token is accepted here for convenience.',
-      )
+      .setDescription('Dashboard, transactions, and asynchronous payouts. Clients authenticate with a Bearer token.')
       .setVersion('1.0')
-      .addCookieAuth('access_token')
       .addBearerAuth()
       .build();
 
     SwaggerModule.setup('api/docs', app, SwaggerModule.createDocument(app, swagger), {
-      swaggerOptions: { withCredentials: true, persistAuthorization: true },
+      swaggerOptions: { persistAuthorization: true },
     });
   }
 
