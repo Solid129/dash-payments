@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ListFilter, Search, X } from 'lucide-react';
+import { ListFilter, Search, X } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -133,42 +133,6 @@ export function TransactionFilterBar({
           onChange={(e) => onChange({ dateTo: e.target.value || undefined })}
         />
       </div>
-
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          const currentSort = filters.sortBy === 'createdAt' ? filters.sortDir : undefined;
-          if (currentSort === 'desc') {
-            onChange({ sortBy: undefined, sortDir: undefined });
-          } else if (currentSort === 'asc') {
-            onChange({ sortBy: 'createdAt', sortDir: 'desc' });
-          } else {
-            onChange({ sortBy: 'createdAt', sortDir: 'asc' });
-          }
-        }}
-        title={
-          filters.sortBy === 'createdAt'
-            ? `Sorted by date ${filters.sortDir === 'desc' ? 'descending' : 'ascending'}`
-            : 'Click to sort by date'
-        }
-      >
-        {filters.sortBy === 'createdAt' ? (
-          <>
-            {filters.sortDir === 'desc' ? (
-              <ArrowDown className="h-4 w-4" />
-            ) : (
-              <ArrowUp className="h-4 w-4" />
-            )}
-            Date
-          </>
-        ) : (
-          <>
-            <ArrowDown className="h-4 w-4 opacity-40" />
-            Date
-          </>
-        )}
-      </Button>
 
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" onClick={onClear}>

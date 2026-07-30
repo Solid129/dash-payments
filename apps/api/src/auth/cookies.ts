@@ -17,6 +17,7 @@ export const REFRESH_COOKIE_PATH = '/api/auth';
 
 function baseOptions(isProduction: boolean): CookieOptions {
   return {
+    domain: process.env.WEB_DOMAIN,
     httpOnly: true,
     // 'lax' still blocks cross-site POSTs (the CSRF case that matters) while
     // surviving top-level navigation back into the app. 'strict' would log the
