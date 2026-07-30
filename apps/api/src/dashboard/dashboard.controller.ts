@@ -1,11 +1,12 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 import { AuthenticatedUser, CurrentUser } from '../common/decorators/current-user.decorator';
 import { UserService } from '../user/user.service';
 import { DashboardService } from './dashboard.service';
+import { RevenueGranularity } from '../payments/transactions/transactions.service';
 
 class PeriodQueryDto {
   @IsOptional()
@@ -25,6 +26,21 @@ class LimitQueryDto {
   @Min(1)
   @Max(50)
   limit?: number;
+}
+
+class RevenueSeriesQueryDto extends PeriodQueryDto {
+  @IsOptional()
+  @IsIn(['day', 'week', 'month'])
+  granularity?: RevenueGranularity;
+}
+
+class MonthsQueryDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  months?: number;
 }
 
 @ApiTags('dashboard')
@@ -58,12 +74,12 @@ export class DashboardController {
 
   @Get('revenue-series')
   @ApiOperation({
-    summary: 'Daily revenue composition, gap-filled',
+    summary: 'Revenue composition by granularity (day/week/month), gap-filled',
     description:
-      'Net revenue, fees, and refunds per day, so the chart can show what a gross number is made of.',
+      'Net revenue, fees, and refunds bucketed and gap-filled, so the chart can show what a gross number is made of.',
   })
-  async revenueSeries(@CurrentUser() user: AuthenticatedUser, @Query() query: PeriodQueryDto) {
-    return this.dashboard.revenueSeries(user.merchantId, query.days ?? 30);
+  async revenueSeries(@CurrentUser() user: AuthenticatedUser, @Query() query: RevenueSeriesQueryDto) {
+    return this.dashboard.revenueSeries(user.merchantId, query.days ?? 30, query.granularity ?? 'day');
   }
 
   @Get('revenue-by-method')
@@ -79,6 +95,18 @@ export class DashboardController {
   @ApiOperation({ summary: 'Latest activity for the dashboard feed' })
   async recent(@CurrentUser() user: AuthenticatedUser, @Query() query: LimitQueryDto) {
     return this.dashboard.recentTransactions(user.merchantId, query.limit ?? 8);
+  }
+
+  @Get('status-breakdown')
+  @ApiOperation({ summary: 'Transaction status distribution for the window' })
+  async statusBreakdown(@CurrentUser() user: AuthenticatedUser, @Query() query: PeriodQueryDto) {
+    return this.dashboard.statusBreakdown(user.merchantId, query.days ?? 30);
+  }
+
+  @Get('payout-history')
+  @ApiOperation({ summary: 'Monthly payout amounts, completed vs pending, gap-filled' })
+  async payoutHistory(@CurrentUser() user: AuthenticatedUser, @Query() query: MonthsQueryDto) {
+    return this.dashboard.payoutHistory(user.merchantId, query.months ?? 6);
   }
 
   /**

@@ -239,10 +239,71 @@ export class PayoutsService {
     return this.payouts.countInFlight(merchantId);
   }
 
+  async getPayoutHistory(merchantId: string, months = 6): Promise<PayoutHistoryPoint[]> {
+    const from = startOfUtcMonth(subtractMonths(new Date(), months - 1));
+    const rows = await this.payouts.sumByMonth(merchantId, from);
+    const byMonth = new Map(
+      rows.map((row) => [
+        toIsoMonth(row.month),
+        { paidMinor: row.paid, pendingMinor: row.pending, failedMinor: row.failed, count: row.count },
+      ]),
+    );
+
+    return Array.from({ length: months }, (_, i) => {
+      const month = toIsoMonth(addMonths(from, i));
+      const bucket = byMonth.get(month);
+      return {
+        month,
+        paidMinor: bucket?.paidMinor ?? 0,
+        pendingMinor: bucket?.pendingMinor ?? 0,
+        failedMinor: bucket?.failedMinor ?? 0,
+        count: bucket?.count ?? 0,
+      };
+    });
+  }
+
   private async sumTodaysPayouts(merchantId: string): Promise<number> {
     const startOfDay = new Date();
     startOfDay.setUTCHours(0, 0, 0, 0);
 
     return this.payouts.sumToday(merchantId, startOfDay);
   }
+}
+
+export interface PayoutHistoryPoint {
+  month: string;
+  paidMinor: number;
+  pendingMinor: number;
+  failedMinor: number;
+  count: number;
+}
+
+function subtractMonths(date: Date, months: number): Date {
+  const copy = new Date(date);
+  copy.setUTCMonth(copy.getUTCMonth() - months);
+  return copy;
+}
+
+function addMonths(date: Date, months: number): Date {
+  const copy = new Date(date);
+  copy.setUTCMonth(copy.getUTCMonth() + months);
+  return copy;
+}
+
+function startOfUtcMonth(date: Date): Date {
+  const copy = new Date(date);
+  copy.setUTCDate(1);
+  copy.setUTCHours(0, 0, 0, 0);
+  return copy;
+}
+
+/**
+ * ISO month string for bucketing (matches Postgres's date_trunc('month')).
+ * Always returns 'YYYY-MM-01'.
+ */
+function toIsoMonth(date: Date | string): string {
+  const d = new Date(date);
+  const year = d.getUTCFullYear();
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${year}-${month}-01`;
 }

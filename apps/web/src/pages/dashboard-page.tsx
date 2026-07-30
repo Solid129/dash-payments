@@ -1,32 +1,43 @@
 import { ArrowRight } from 'lucide-react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useAuth } from '@/features/auth/auth-context';
 import {
   useDashboardSummary,
+  usePayoutHistory,
   useRecentTransactions,
   useRevenueByMethod,
   useRevenueSeries,
+  useStatusBreakdown,
   useVolumeSeries,
 } from '@/features/dashboard/use-dashboard';
 import { MethodBreakdownChart } from '@/features/dashboard/method-breakdown-chart';
+import { PayoutHistoryChart } from '@/features/dashboard/payout-history-chart';
 import { RecentActivityList } from '@/features/dashboard/recent-activity';
 import { RevenueChart } from '@/features/dashboard/revenue-chart';
 import { StatTile } from '@/features/dashboard/stat-tile';
+import { StatusBreakdownChart } from '@/features/dashboard/status-breakdown-chart';
+import { ChartErrorState } from '@/features/dashboard/chart-error-state';
 import { VolumeChart } from '@/features/dashboard/volume-chart';
 import { formatMoney } from '@/lib/money';
+import type { RevenueGranularity } from '@/types/api';
 
 export function DashboardPage() {
   const { profile } = useAuth();
   const currency = profile?.merchant.defaultCurrency ?? 'INR';
+  const [granularity, setGranularity] = useState<RevenueGranularity>('day');
 
   const summary = useDashboardSummary(30);
   const volume = useVolumeSeries(30);
-  const revenue = useRevenueSeries(30);
+  const revenue = useRevenueSeries(30, granularity);
   const methodBreakdown = useRevenueByMethod(30);
   const recent = useRecentTransactions(4);
+  const statusBreakdown = useStatusBreakdown(30);
+  const payoutHistory = usePayoutHistory(6);
 
   return (
     <div className="space-y-6">
@@ -104,14 +115,29 @@ export function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Revenue composition</CardTitle>
+            <div className="flex gap-1" role="group">
+              {(['day', 'week', 'month'] as const).map((g) => (
+                <Button
+                  key={g}
+                  variant={granularity === g ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => setGranularity(g)}
+                  className="capitalize"
+                >
+                  {g}
+                </Button>
+              ))}
+            </div>
           </CardHeader>
           <CardContent>
             {revenue.isLoading || !revenue.data ? (
               <Skeleton className="h-[260px] w-full" />
+            ) : revenue.isError ? (
+              <ChartErrorState />
             ) : (
-              <RevenueChart data={revenue.data} currency={currency} />
+              <RevenueChart data={revenue.data} currency={currency} granularity={granularity} />
             )}
           </CardContent>
         </Card>
@@ -123,8 +149,42 @@ export function DashboardPage() {
           <CardContent>
             {methodBreakdown.isLoading || !methodBreakdown.data ? (
               <Skeleton className="h-[220px] w-full" />
+            ) : methodBreakdown.isError ? (
+              <ChartErrorState />
             ) : (
               <MethodBreakdownChart data={methodBreakdown.data} currency={currency} />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Transaction status</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {statusBreakdown.isLoading || !statusBreakdown.data ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : statusBreakdown.isError ? (
+              <ChartErrorState />
+            ) : (
+              <StatusBreakdownChart data={statusBreakdown.data} />
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Payout history</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {payoutHistory.isLoading || !payoutHistory.data ? (
+              <Skeleton className="h-[220px] w-full" />
+            ) : payoutHistory.isError ? (
+              <ChartErrorState />
+            ) : (
+              <PayoutHistoryChart data={payoutHistory.data} currency={currency} />
             )}
           </CardContent>
         </Card>

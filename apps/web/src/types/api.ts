@@ -135,6 +135,22 @@ export interface RecentTransaction {
   customer: { id: string; name: string } | null;
 }
 
+export type RevenueGranularity = 'day' | 'week' | 'month';
+
+export interface StatusBreakdownPoint {
+  status: TransactionStatus;
+  count: number;
+  percentage: number;
+}
+
+export interface PayoutHistoryPoint {
+  month: string;
+  paidMinor: number;
+  pendingMinor: number;
+  failedMinor: number;
+  count: number;
+}
+
 export type BankAccountStatus = 'PENDING' | 'VERIFIED' | 'DISABLED';
 
 export interface BankAccount {

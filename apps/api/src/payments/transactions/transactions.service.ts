@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { and, asc, desc, eq, gt, gte, ilike, inArray, lt, lte, or, sql, SQL } from 'drizzle-orm';
 
 import { QueryTransactionsDto, TransactionSortField } from './dto/query-transactions.dto';
@@ -37,6 +37,15 @@ const METHOD_DISPLAY_ORDER: PaymentMethod[] = [
   PaymentMethod.WALLET,
   PaymentMethod.BANK_TRANSFER,
 ];
+
+export type RevenueGranularity = 'day' | 'week' | 'month';
+const REVENUE_GRANULARITIES: RevenueGranularity[] = ['day', 'week', 'month'];
+
+export interface StatusBreakdownPoint {
+  status: TransactionStatus;
+  count: number;
+  percentage: number;
+}
 
 export interface VolumePoint {
   date: string;
@@ -332,30 +341,54 @@ export class TransactionsService {
   }
 
   /**
-   * Daily revenue composition: net revenue, fees, and refunds, gap-filled
-   * exactly like `getVolumeSeries`.
+   * Revenue composition (net revenue, fees, and refunds), bucketed by granularity
+   * (day/week/month) and gap-filled so zero periods appear. Daily gap-fill walks
+   * consecutive calendar days; week/month gap-fill walks date_trunc-aligned bucket
+   * boundaries so JS-side keys match Postgres's truncation.
    */
-  async getRevenueSeries(merchantId: string, days = 30): Promise<RevenuePoint[]> {
-    const from = startOfUtcDay(subtractDays(new Date(), days - 1));
-    const rows = await this.transactions.revenueByDay(merchantId, from, SETTLED_STATUSES);
+  async getRevenueSeries(
+    merchantId: string,
+    days = 30,
+    granularity: RevenueGranularity = 'day',
+  ): Promise<RevenuePoint[]> {
+    if (!REVENUE_GRANULARITIES.includes(granularity)) {
+      throw new BadRequestException('Invalid granularity.');
+    }
 
-    const byDay = new Map(
+    const from = startOfUtcDay(subtractDays(new Date(), days - 1));
+    const rows = await this.transactions.revenueByDay(merchantId, from, SETTLED_STATUSES, granularity);
+
+    const byBucket = new Map(
       rows.map((row) => [
-        toIsoDate(row.day),
+        toIsoDate(row.bucket),
         { netMinor: row.net, feesMinor: row.fees, refundedMinor: row.refunds },
       ]),
     );
 
-    return Array.from({ length: days }, (_, index) => {
-      const date = toIsoDate(addDays(from, index));
-      const bucket = byDay.get(date);
-      return {
-        date,
-        netMinor: bucket?.netMinor ?? 0,
-        feesMinor: bucket?.feesMinor ?? 0,
-        refundedMinor: bucket?.refundedMinor ?? 0,
-      };
-    });
+    if (granularity === 'day') {
+      return Array.from({ length: days }, (_, index) => {
+        const date = toIsoDate(addDays(from, index));
+        const bucket = byBucket.get(date);
+        return {
+          date,
+          netMinor: bucket?.netMinor ?? 0,
+          feesMinor: bucket?.feesMinor ?? 0,
+          refundedMinor: bucket?.refundedMinor ?? 0,
+        };
+      });
+    } else {
+      const buckets = bucketStarts(from, new Date(), granularity);
+      return buckets.map((bucket) => {
+        const isoDate = toIsoDate(bucket);
+        const data = byBucket.get(isoDate);
+        return {
+          date: isoDate,
+          netMinor: data?.netMinor ?? 0,
+          feesMinor: data?.feesMinor ?? 0,
+          refundedMinor: data?.refundedMinor ?? 0,
+        };
+      });
+    }
   }
 
   /**
@@ -382,6 +415,22 @@ export class TransactionsService {
 
   async getRecentTransactions(merchantId: string, limit = 8) {
     return this.transactions.findRecent(merchantId, limit);
+  }
+
+  /**
+   * Transaction status distribution: every TransactionStatus, zero-filled,
+   * with percentages. Mirrors getRevenueByMethod's zero-fill discipline.
+   */
+  async getStatusBreakdown(merchantId: string, days = 30): Promise<StatusBreakdownPoint[]> {
+    const from = subtractDays(new Date(), days);
+    const grouped = await this.transactions.sumByStatus(merchantId, from);
+    const byStatus = new Map(grouped.map((row) => [row.status, row.count]));
+    const total = grouped.reduce((sum, row) => sum + row.count, 0);
+
+    return Object.values(TransactionStatus).map((status) => {
+      const count = byStatus.get(status) ?? 0;
+      return { status, count, percentage: total === 0 ? 0 : (count / total) * 100 };
+    });
   }
 
   /** Aggregates for one window: `[from, to)`. */
@@ -440,4 +489,48 @@ function endOfDay(date: Date): Date {
   const end = new Date(date);
   end.setUTCHours(23, 59, 59, 999);
   return end;
+}
+
+/**
+ * Generate an array of bucket-start dates aligned to date_trunc boundaries
+ * (so JS-side keys match Postgres's `date_trunc` results). For week/month
+ * granularity, Postgres's `date_trunc` uses ISO week (Monday-start) and
+ * calendar months.
+ */
+function bucketStarts(from: Date, to: Date, granularity: RevenueGranularity): Date[] {
+  const buckets: Date[] = [];
+  const current = startOfUtcDay(new Date(from));
+
+  if (granularity === 'day') {
+    while (current <= to) {
+      buckets.push(new Date(current));
+      addDays(current, 1);
+    }
+  } else if (granularity === 'week') {
+    // ISO week starts on Monday (day 1 of week). Find the Monday on or before `current`.
+    const dayOfWeek = current.getUTCDay(); // 0 = Sun, 1 = Mon
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const weekStart = new Date(current);
+    weekStart.setUTCDate(weekStart.getUTCDate() - daysToMonday);
+    weekStart.setUTCHours(0, 0, 0, 0);
+
+    let week = new Date(weekStart);
+    while (week <= to) {
+      buckets.push(new Date(week));
+      week.setUTCDate(week.getUTCDate() + 7);
+    }
+  } else if (granularity === 'month') {
+    // Calendar month starts on the 1st.
+    const monthStart = new Date(current);
+    monthStart.setUTCDate(1);
+    monthStart.setUTCHours(0, 0, 0, 0);
+
+    let month = new Date(monthStart);
+    while (month <= to) {
+      buckets.push(new Date(month));
+      month.setUTCMonth(month.getUTCMonth() + 1);
+    }
+  }
+
+  return buckets;
 }

@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { BalanceService } from '../payments/ledger/balance.service';
-import { PayoutsService } from '../payments/payouts/payouts.service';
+import { PayoutsService, PayoutHistoryPoint } from '../payments/payouts/payouts.service';
 import {
   MethodBreakdownPoint,
+  RevenueGranularity,
   RevenuePoint,
+  StatusBreakdownPoint,
   TransactionsService,
   VolumePoint,
 } from '../payments/transactions/transactions.service';
@@ -74,8 +76,12 @@ export class DashboardService {
     return this.transactions.getVolumeSeries(merchantId, days);
   }
 
-  async revenueSeries(merchantId: string, days = 30): Promise<RevenuePoint[]> {
-    return this.transactions.getRevenueSeries(merchantId, days);
+  async revenueSeries(
+    merchantId: string,
+    days = 30,
+    granularity: RevenueGranularity = 'day',
+  ): Promise<RevenuePoint[]> {
+    return this.transactions.getRevenueSeries(merchantId, days, granularity);
   }
 
   async revenueByMethod(merchantId: string, days = 30): Promise<MethodBreakdownPoint[]> {
@@ -84,6 +90,14 @@ export class DashboardService {
 
   async recentTransactions(merchantId: string, limit = 8) {
     return this.transactions.getRecentTransactions(merchantId, limit);
+  }
+
+  async statusBreakdown(merchantId: string, days = 30): Promise<StatusBreakdownPoint[]> {
+    return this.transactions.getStatusBreakdown(merchantId, days);
+  }
+
+  async payoutHistory(merchantId: string, months = 6): Promise<PayoutHistoryPoint[]> {
+    return this.payouts.getPayoutHistory(merchantId, months);
   }
 }
 

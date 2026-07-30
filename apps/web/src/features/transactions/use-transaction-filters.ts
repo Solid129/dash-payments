@@ -14,6 +14,8 @@ export function useTransactionFilters() {
   const filters = useMemo<TransactionFilters>(() => {
     const status = searchParams.get('status');
     const method = searchParams.get('method');
+    const sortBy = searchParams.get('sortBy');
+    const sortDir = searchParams.get('sortDir');
     return {
       status: status ? (status.split(',') as TransactionStatus[]) : undefined,
       method: method ? (method.split(',') as PaymentMethod[]) : undefined,
@@ -22,6 +24,8 @@ export function useTransactionFilters() {
       amountMin: searchParams.get('amountMin') ? Number(searchParams.get('amountMin')) : undefined,
       amountMax: searchParams.get('amountMax') ? Number(searchParams.get('amountMax')) : undefined,
       q: searchParams.get('q') ?? undefined,
+      sortBy: (sortBy as 'createdAt' | 'amountMinor' | undefined) ?? undefined,
+      sortDir: (sortDir as 'asc' | 'desc' | undefined) ?? undefined,
     };
   }, [searchParams]);
 

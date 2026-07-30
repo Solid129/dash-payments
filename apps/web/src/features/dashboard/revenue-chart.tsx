@@ -3,7 +3,7 @@ import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, X
 
 import { formatCompactMoney, formatMoney } from '@/lib/money';
 import { useTheme } from '@/lib/theme-context';
-import type { RevenuePoint } from '@/types/api';
+import type { RevenueGranularity, RevenuePoint } from '@/types/api';
 
 /**
  * Three-series stacked composition (fees, net revenue, refunds), colors from
@@ -49,10 +49,24 @@ function CustomTooltip({
   );
 }
 
-export function RevenueChart({ data, currency }: { data: RevenuePoint[]; currency: string }) {
+export function RevenueChart({
+  data,
+  currency,
+  granularity = 'day',
+}: {
+  data: RevenuePoint[];
+  currency: string;
+  granularity?: RevenueGranularity;
+}) {
   const { isDark } = useTheme();
   const gridColor = isDark ? '#2c2c2a' : '#e1e0d9';
   const axisColor = '#898781';
+
+  const getDateFormat = () => {
+    if (granularity === 'day') return 'MMM d';
+    if (granularity === 'week') return 'MMM d';
+    return 'MMM yyyy';
+  };
 
   return (
     <ResponsiveContainer width="100%" height={260}>
@@ -60,7 +74,7 @@ export function RevenueChart({ data, currency }: { data: RevenuePoint[]; currenc
         <CartesianGrid vertical={false} stroke={gridColor} strokeDasharray="3 3" />
         <XAxis
           dataKey="date"
-          tickFormatter={(value: string) => format(parseISO(value), 'MMM d')}
+          tickFormatter={(value: string) => format(parseISO(value), getDateFormat())}
           tick={{ fontSize: 12, fill: axisColor }}
           axisLine={{ stroke: gridColor }}
           tickLine={false}

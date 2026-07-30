@@ -1,25 +1,10 @@
 import { Bar, BarChart, CartesianGrid, Cell, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 import { METHOD_LABELS } from '@/features/transactions/format';
+import { METHOD_COLORS } from '@/features/dashboard/method-colors';
 import { formatCompactMoney, formatMoney } from '@/lib/money';
 import { useTheme } from '@/lib/theme-context';
 import type { MethodBreakdownPoint, PaymentMethod } from '@/types/api';
-
-/**
- * Fixed color per method — the default categorical order's first four slots,
- * validated together with `scripts/validate_palette.js` (worst adjacent
- * normal-vision ΔE 22.9 light / 19.8 dark, both clear of the CVD floor). Two
- * light-mode bars (aqua, yellow) sit under 3:1 against the white surface,
- * which the skill treats as needing "relief" — the value labels rendered at
- * the end of each bar below are that relief, so color is never load-bearing
- * alone.
- */
-const METHOD_COLORS: Record<PaymentMethod, { light: string; dark: string }> = {
-  CARD: { light: '#2a78d6', dark: '#3987e5' },
-  UPI: { light: '#eb6834', dark: '#d95926' },
-  WALLET: { light: '#1baf7a', dark: '#199e70' },
-  BANK_TRANSFER: { light: '#eda100', dark: '#c98500' },
-};
 
 function CustomTooltip({
   active,
@@ -47,9 +32,11 @@ export function MethodBreakdownChart({ data, currency }: { data: MethodBreakdown
   const gridColor = isDark ? '#2c2c2a' : '#e1e0d9';
   const axisColor = '#898781';
 
+  const sorted = [...data].sort((a, b) => b.grossMinor - a.grossMinor);
+
   return (
     <ResponsiveContainer width="100%" height={220}>
-      <BarChart data={data} layout="vertical" margin={{ top: 8, right: 48, left: 8, bottom: 0 }}>
+      <BarChart data={sorted} layout="vertical" margin={{ top: 8, right: 48, left: 8, bottom: 0 }}>
         <CartesianGrid horizontal={false} stroke={gridColor} strokeDasharray="3 3" />
         <XAxis
           type="number"
@@ -69,9 +56,10 @@ export function MethodBreakdownChart({ data, currency }: { data: MethodBreakdown
         />
         <Tooltip content={<CustomTooltip currency={currency} />} cursor={{ fill: gridColor, opacity: 0.4 }} />
         <Bar dataKey="grossMinor" radius={[0, 4, 4, 0]} maxBarSize={28}>
-          {data.map((point) => (
-            <Cell key={point.method} fill={isDark ? METHOD_COLORS[point.method].dark : METHOD_COLORS[point.method].light} />
-          ))}
+          {sorted.map((point) => {
+            const color = METHOD_COLORS[point.method];
+            return <Cell key={point.method} fill={isDark ? color.dark : color.light} />;
+          })}
           {/* The mandated "relief" for the two light-mode bars that fall under
               3:1 contrast against the surface — see the palette comment above.
               A value is legible here regardless of the bar's own color. */}

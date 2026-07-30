@@ -1,7 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api-client';
-import type { DashboardSummary, MethodBreakdownPoint, RecentTransaction, RevenuePoint, VolumePoint } from '@/types/api';
+import type {
+  DashboardSummary,
+  MethodBreakdownPoint,
+  PayoutHistoryPoint,
+  RecentTransaction,
+  RevenueGranularity,
+  RevenuePoint,
+  StatusBreakdownPoint,
+  VolumePoint,
+} from '@/types/api';
 
 export function useDashboardSummary(days = 30) {
   return useQuery({
@@ -27,11 +36,13 @@ export function useVolumeSeries(days = 30) {
   });
 }
 
-export function useRevenueSeries(days = 30) {
+export function useRevenueSeries(days = 30, granularity: RevenueGranularity = 'day') {
   return useQuery({
-    queryKey: ['dashboard', 'revenue-series', days],
+    queryKey: ['dashboard', 'revenue-series', days, granularity],
     queryFn: async () => {
-      const { data } = await api.get<RevenuePoint[]>('/dashboard/revenue-series', { params: { days } });
+      const { data } = await api.get<RevenuePoint[]>('/dashboard/revenue-series', {
+        params: { days, granularity },
+      });
       return data;
     },
   });
@@ -59,5 +70,29 @@ export function useRecentTransactions(limit = 5) {
       return data;
     },
     refetchInterval: 15_000,
+  });
+}
+
+export function useStatusBreakdown(days = 30) {
+  return useQuery({
+    queryKey: ['dashboard', 'status-breakdown', days],
+    queryFn: async () => {
+      const { data } = await api.get<StatusBreakdownPoint[]>('/dashboard/status-breakdown', {
+        params: { days },
+      });
+      return data;
+    },
+  });
+}
+
+export function usePayoutHistory(months = 6) {
+  return useQuery({
+    queryKey: ['dashboard', 'payout-history', months],
+    queryFn: async () => {
+      const { data } = await api.get<PayoutHistoryPoint[]>('/dashboard/payout-history', {
+        params: { months },
+      });
+      return data;
+    },
   });
 }

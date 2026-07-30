@@ -177,11 +177,12 @@ export class TransactionsRepository {
     merchantId: string,
     from: Date,
     settledStatuses: TransactionStatus[],
+    granularity: 'day' | 'week' | 'month' = 'day',
     client: Db = this.database.db,
   ) {
-    return client.execute<{ day: string; net: number; fees: number; refunds: number }>(sql`
+    return client.execute<{ bucket: string; net: number; fees: number; refunds: number }>(sql`
       SELECT
-        date_trunc('day', "createdAt") AS day,
+        date_trunc(${granularity}, "createdAt") AS bucket,
         COALESCE(SUM("netMinor") FILTER (
           WHERE "type" = 'PAYMENT' AND ${inArray(transactions.status, settledStatuses)}
         ), 0)::int AS net,
@@ -194,8 +195,8 @@ export class TransactionsRepository {
       FROM transactions
       WHERE "merchantId" = ${merchantId}::uuid
         AND "createdAt" >= ${from.toISOString()}::timestamptz
-      GROUP BY day
-      ORDER BY day ASC
+      GROUP BY bucket
+      ORDER BY bucket ASC
     `);
   }
 
@@ -222,6 +223,28 @@ export class TransactionsRepository {
         ),
       )
       .groupBy(transactions.method);
+  }
+
+  async sumByStatus(
+    merchantId: string,
+    from: Date,
+    client: Db = this.database.db,
+  ) {
+    return client
+      .select({
+        status: transactions.status,
+        count: sql<number>`count(*)::int`,
+        sumMinor: sql<number>`coalesce(sum(${transactions.amountMinor}), 0)::int`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          eq(transactions.merchantId, merchantId),
+          eq(transactions.type, TransactionType.PAYMENT),
+          gte(transactions.createdAt, from),
+        ),
+      )
+      .groupBy(transactions.status);
   }
 
   async findRecent(merchantId: string, limit: number, client: Db = this.database.db) {

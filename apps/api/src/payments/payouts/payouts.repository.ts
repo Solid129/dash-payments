@@ -97,6 +97,28 @@ export class PayoutsRepository {
     return row?.sum ?? 0;
   }
 
+  async sumByMonth(merchantId: string, from: Date, client: Db = this.database.db) {
+    return client.execute<{
+      month: string;
+      paid: number;
+      pending: number;
+      failed: number;
+      count: number;
+    }>(sql`
+      SELECT
+        date_trunc('month', "createdAt") AS month,
+        COALESCE(SUM("amountMinor") FILTER (WHERE "status" = 'PAID'), 0)::int AS paid,
+        COALESCE(SUM("amountMinor") FILTER (WHERE "status" IN ('PENDING','PROCESSING')), 0)::int AS pending,
+        COALESCE(SUM("amountMinor") FILTER (WHERE "status" = 'FAILED'), 0)::int AS failed,
+        COUNT(*)::int AS count
+      FROM payouts
+      WHERE "merchantId" = ${merchantId}::uuid
+        AND "createdAt" >= ${from.toISOString()}::timestamptz
+      GROUP BY month
+      ORDER BY month ASC
+    `);
+  }
+
   async findByIdForSimulate(merchantId: string, id: string, client: Db = this.database.db) {
     return client.query.payouts.findFirst({
       where: and(eq(payouts.id, id), eq(payouts.merchantId, merchantId)),
