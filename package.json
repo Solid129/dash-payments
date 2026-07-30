@@ -1,0 +1,36 @@
+{
+  "name": "andpayments",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Merchant Payments Dashboard — NestJS + React + PostgreSQL",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c cyan,magenta \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "npm run start:dev -w @andpayments/api",
+    "dev:web": "npm run dev -w @andpayments/web",
+    "build": "npm run build -w @andpayments/api && npm run build -w @andpayments/web",
+    "db:up": "docker compose up -d",
+    "db:down": "docker compose down",
+    "db:local:init": "initdb -D .pgdata -U andpayments --auth=trust --encoding=UTF8 && npm run db:local:start && createdb -h localhost -p 5433 -U andpayments andpayments && createdb -h localhost -p 5433 -U andpayments andpayments_test",
+    "db:local:start": "pg_ctl -D .pgdata -l .pgdata/server.log -o \"-p 5433 -k /tmp\" start",
+    "db:local:stop": "pg_ctl -D .pgdata stop",
+    "db:migrate": "npm run db:migrate -w @andpayments/api",
+    "db:generate": "npm run db:generate -w @andpayments/api",
+    "db:seed": "npm run db:seed -w @andpayments/api",
+    "db:studio": "npm run db:studio -w @andpayments/api",
+    "test": "npm run test -w @andpayments/api",
+    "test:e2e": "npm run test:e2e -w @andpayments/api",
+    "lint": "npm run lint -w @andpayments/api && npm run lint -w @andpayments/web",
+    "typecheck": "npm run typecheck -w @andpayments/api && npm run typecheck -w @andpayments/web",
+    "setup": "npm install && npm run db:up && npm run db:migrate && npm run db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

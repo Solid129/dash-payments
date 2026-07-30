@@ -1,0 +1,38 @@
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy root package files and workspace configs
+COPY package*.json ./
+# Copy workspace package.json
+COPY apps/api/package*.json ./apps/api/
+
+# Install dependencies
+RUN npm ci
+
+COPY apps/api ./apps/api
+
+# Build API
+RUN npm run build -w @andpayments/api
+
+# Production stage
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Copy root package files
+COPY package*.json ./
+
+# Copy workspace package.json for production
+COPY apps/api/package*.json ./apps/api/
+
+# Install production dependencies only
+RUN npm ci --omit=dev --ignore-scripts
+
+# Copy built application from builder
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+
+EXPOSE 3000
+
+CMD ["node", "apps/api/dist/main"]

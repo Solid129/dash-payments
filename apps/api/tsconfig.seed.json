@@ -1,0 +1,11 @@
+{
+  // The seed and e2e tests live outside `src` but import from it, so they get
+  // their own no-emit project rather than widening the build's rootDir.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "noEmit": true,
+    "noUnusedLocals": false
+  },
+  "include": ["src/**/*", "db/**/*", "test/**/*", "drizzle.config.ts"]
+}
