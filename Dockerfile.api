@@ -16,23 +16,32 @@ COPY apps/api ./apps/api
 # Build API
 RUN npm run build -w @andpayments/api
 
-# Production stage
-FROM node:20-alpine
+# Only single stage build to include migration and seed scripts, configs, and source (needed for startup)
+# # Production stage 
+# FROM node:20-alpine
 
-WORKDIR /app
+# WORKDIR /app
 
 # Copy root package files
-COPY package*.json ./
+# COPY package*.json ./
 
-# Copy workspace package.json for production
-COPY apps/api/package*.json ./apps/api/
+# Copy workspace package.json
+# COPY apps/api/package*.json ./apps/api/
 
-# Install dependencies (including devDependencies for preDeployCommand migrations/seeding on Render)
-RUN npm ci --ignore-scripts
+# Install dependencies (including devDependencies for ts-node-based migrations on startup)
+# RUN npm ci --ignore-scripts
 
 # Copy built application from builder
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
+# COPY --from=builder /app/apps/api/dist ./apps/api/dist
+
+# Copy migration and seed scripts, configs, and source (needed for startup)
+COPY apps/api/db ./apps/api/db
+COPY apps/api/src ./apps/api/src
+COPY apps/api/drizzle.config.ts ./apps/api/
+COPY apps/api/tsconfig.json ./apps/api/
+COPY apps/api/tsconfig.seed.json ./apps/api/
 
 EXPOSE 3000
 
-CMD ["node", "apps/api/dist/main"]
+# Run migrations and seeding on startup, then start the app
+CMD ["sh", "-c", "npm run db:migrate -w @andpayments/api && npm run db:seed -w @andpayments/api && node apps/api/dist/main"]

@@ -12,7 +12,6 @@ services:
     dockerContext: .
     plan: starter
     healthCheckPath: /api/health
-    preDeployCommand: npm run db:migrate -w @andpayments/api && npm run db:seed -w @andpayments/api
     envVars:
       - key: NODE_ENV
         value: production

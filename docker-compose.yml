@@ -55,22 +55,22 @@ services:
     networks:
       - andpayments-network
 
-  migrate:
-    build:
-      context: .
-      dockerfile: Dockerfile.api
-      target: builder
-    container_name: andpayments-migrate
-    depends_on:
-      postgres:
-        condition: service_healthy
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql://andpayments:andpayments@postgres:5432/andpayments
-    command: sh -c "npm run db:migrate -w @andpayments/api && npm run db:seed -w @andpayments/api"
-    networks:
-      - andpayments-network
-    restart: 'no'
+  # migrate:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.api
+  #     target: builder
+  #   container_name: andpayments-migrate
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   env_file: .env
+  #   environment:
+  #     DATABASE_URL: postgresql://andpayments:andpayments@postgres:5432/andpayments
+  #   command: sh -c "npm run db:migrate -w @andpayments/api && npm run db:seed -w @andpayments/api"
+  #   networks:
+  #     - andpayments-network
+  #   restart: 'no'
 
   api:
     build:
@@ -81,8 +81,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
+      # migrate:
+      #   condition: service_completed_successfully
     env_file: .env
     environment:
       NODE_ENV: production
