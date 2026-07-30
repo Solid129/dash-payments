@@ -21,8 +21,8 @@ function baseOptions(isProduction: boolean): CookieOptions {
     // 'lax' still blocks cross-site POSTs (the CSRF case that matters) while
     // surviving top-level navigation back into the app. 'strict' would log the
     // user out every time they followed a link in from elsewhere.
-    sameSite: 'lax',
-    secure: isProduction,
+    sameSite: 'none',
+    secure: true,
   };
 }
 
