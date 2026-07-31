@@ -154,15 +154,21 @@ different events. See `apps/api/src/payments/payouts/psp/` and
 - Argon2id password hashing; a constant-time-equivalent login path (a dummy
   hash is verified against on an unknown email, so response timing doesn't
   reveal which addresses have accounts).
-- Access + refresh JWTs in `httpOnly`, `sameSite=lax` cookies — never in
-  `localStorage`, so client-side JS (including an XSS payload) can't read
-  them.
+- Access + refresh JWTs are returned as **Bearer tokens in the response
+  body** and stored client-side in `localStorage`
+  (`apps/web/src/lib/token-storage.ts`), sent back via an `Authorization:
+  Bearer` header (`apps/web/src/lib/api-client.ts`). This trades the
+  XSS-token-theft resistance of an `httpOnly` cookie for simplicity across
+  cross-origin deployments (web and API on separate Render origins) —
+  worth hardening (e.g. in-memory access token, cookie-only refresh token)
+  before this pattern is used anywhere real money moves.
 - Refresh tokens are stored as SHA-256 hashes and **rotated** on every use.
   Presenting an already-rotated token is treated as theft and revokes the
   entire token family, not just that one token.
 - A global `JwtAuthGuard` protects every route by default; `@Public()` is the
-  explicit, reviewable exception — used exactly twice (auth endpoints, and
-  the webhook receiver, which is protected by signature instead).
+  explicit, reviewable exception — used on the auth endpoints (signup,
+  login, refresh, logout, accept-invite) and the webhook receiver, which is
+  protected by signature instead.
 
 ### Database schema
 
@@ -190,9 +196,9 @@ decisions most worth knowing about going in:
   `@Public()`. The frontend hides buttons a role can't use
   (`apps/web/src/lib/permissions.ts`), but that's UX only — every check is
   re-run on the server, which you can confirm directly: log in as
-  `support@northwindcoffee.test` and `curl -b <cookies> -X POST
-  http://localhost:3000/api/payouts` (or `/transactions/export`) returns
-  `403` regardless of what the UI shows.
+  `support@northwindcoffee.test` and `curl -H "Authorization: Bearer
+  <accessToken>" -X POST http://localhost:3000/api/payouts` (or
+  `/transactions/export`) returns `403` regardless of what the UI shows.
 - **Adding a teammate is a real invite, not a backdoor.** An owner invites by
   email from `/team`; a `TeamMailService` "sends" the email by logging it
   (the same honesty `MockPspService` has about not moving real money) and, in
@@ -232,7 +238,9 @@ decisions most worth knowing about going in:
   shareable link and the back button steps through filter changes.
 - A single axios response interceptor handles token refresh: on a 401, it
   triggers one shared `/auth/refresh` call (coalesced across concurrent
-  requests) and retries the original request once.
+  requests) and retries the original request once. A request interceptor
+  attaches the stored access token as an `Authorization: Bearer` header on
+  every call.
 - The dashboard's chart uses a single validated sequential hue (see
   `apps/web/src/features/dashboard/volume-chart.tsx`) rather than a
   multi-color palette, since it's one series.
